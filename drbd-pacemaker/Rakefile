@@ -44,6 +44,11 @@ namespace :pacemaker do
     sh "crm configure show"
   end
   
+  desc "crm status"
+  task :status do
+    sh "crm status"
+  end
+  
   desc "Verify crm configuration"
   task :verify do
     sh "crm verify -L"

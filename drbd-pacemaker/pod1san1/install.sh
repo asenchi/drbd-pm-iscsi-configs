@@ -65,6 +65,44 @@ drbdadm -- --overwrite-data-of-peer primary all
 # Start drbd
 /etc/init.d/drbd start
 
-corosync-keygen # We've actually already got a key generated
+# We need to remove drbd from startup as pacemaker will take care of that for us
+update-rc.d -f drbd remove
+
+# corosync-keygen # We already have a key generated
 cp conf/etc/corosync/authkey /etc/corosync/authkey
 cp conf/etc/corosync/corosync.conf /etc/corosync/corosync.conf
+
+# Set corosync to startup on boot
+sed -e 's/START=no/START=yes/' -i /etc/defaults/corosync
+
+# Startup corosync
+/etc/init.d/corosync start
+
+# Verify it's working
+crm status
+crm configure show
+
+# Turn off quorum
+crm configure property no-quorum-policy=ignore
+
+# Turn off stonith for now
+crm configure property stonith-enabled=false
+
+# Configure our cluster IP
+crm configure primitive pod1sanip ocf:heartbeat:IPaddr2 params ip="199.34.121.28" cidr_netmask="32" op monitor interval="5s"
+
+# Verify it's working
+crm status
+# Should return something like:
+# ============
+# Last updated: Sun Jul  4 10:36:01 2010
+# Stack: openais
+# Current DC: pod1san1 - partition with quorum
+# Version: 1.0.8-042548a451fce8400660f6031f4da6f0223dd5dd
+# 2 Nodes configured, 2 expected votes
+# 1 Resources configured.
+# ============
+# 
+# Online: [ pod1san1 pod1san2 ]
+# 
+#  pod1sanip	(ocf::heartbeat:IPaddr2):	Started pod1san1
