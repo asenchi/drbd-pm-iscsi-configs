@@ -64,3 +64,7 @@ drbdadm -- --overwrite-data-of-peer primary all
 
 # Start drbd
 /etc/init.d/drbd start
+
+corosync-keygen # We've actually already got a key generated
+cp conf/etc/corosync/authkey /etc/corosync/authkey
+cp conf/etc/corosync/corosync.conf /etc/corosync/corosync.conf

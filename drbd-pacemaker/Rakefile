@@ -1,4 +1,9 @@
 namespace :drbd do
+
+  desc "Print out the status of our drbd resources"
+  task :status do
+    sh "drbdadm status"
+  end
   
   desc "pause-sync on specified resource"
   task :pausesync do
@@ -18,6 +23,45 @@ namespace :drbd do
   desc "reset syncer rate to default for specified resource"
   task :defaultsync do
     sh "drbdsetup adjust #{ENV['resource']}"
+  end
+  
+  desc "Set given resource to primary WARNING: DANGER! You must set secondary on the current primary node first"
+  task :setprimary do
+    sh "drbdadm primary #{ENV['resource']}"
+  end
+
+  desc "Set given resource to secondary WARNING: DANGER"
+  task :setsecondary do
+    sh "drbdadm secondary #{ENV['resource']}"
+  end
+  
+end
+
+namespace :pacemaker do
+  
+  desc "Show crm configuration"
+  task :show do
+    sh "crm configure show"
+  end
+  
+  desc "Verify crm configuration"
+  task :verify do
+    sh "crm verify -L"
+  end
+  
+  desc "crm monitor"
+  task :monitor do
+    sh "crm_mon"
+  end
+  
+  desc "Place node on standby WARNING: DANGEROUS"
+  task :standby do
+    sh "crm node standby"
+  end
+  
+  desc "Bring node online WARNING: DANGEROUS"
+  task :online do
+    sh "crm node online"
   end
   
 end
