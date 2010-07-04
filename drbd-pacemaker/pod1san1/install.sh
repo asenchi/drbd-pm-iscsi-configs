@@ -106,3 +106,14 @@ crm status
 # Online: [ pod1san1 pod1san2 ]
 # 
 #  pod1sanip	(ocf::heartbeat:IPaddr2):	Started pod1san1
+
+# Configure our drbd setup:
+crm configure primitive pod1san-drbd-blade01 ocf:linbit:drbd \
+	params drbd_resources="blade.01" \
+	op monitor interval="20s" role="Slave" timeout="20s" \
+	op monitor interval="10s" role="Master" timeout="20s" \
+	op start interval="0" timeout="240s" \
+	op stop interval="0" timeout="100s"
+crm configure ms pod1san-drbd-ms pod1san-drbd-blade01 \
+	meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" \
+	notify="true"
