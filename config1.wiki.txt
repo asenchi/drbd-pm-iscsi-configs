@@ -1,0 +1,73 @@
+h1. devCloud Testing
+
+This page deals mostly with testing the disk arrays we've setup for the devCloud pod. There are two setups we are looking at:
+* drbd, lvm, heartbeat and iscsi (config1)
+* lvm, iscsi, softRAID (config2)
+
+Details about each configuration can be found below along with their current status.
+
+h3. config1
+
+The first configuration was the drbd, iscsi and heartbeat setup.
+
+*Design*
+* eth0 and eth1 bonded together for redundancy (external)
+* eth2 and eth3 bonded together for redundancy (crossover)
+* LVM
+** 1G logical volume for iscsi configuration
+** 12G logical volume for drbd meta data
+** 16x 814G logical volumes, 1 for each blade.
+* drbd configuration for all lvm logical volumes in an active/passive configuration (due to our using ext4).
+* heartbeat manages drbd failover to pod1san2 and iscsi targets
+
+Due to some switch limitations we were not able to bond eth0 and eth1 on pod1san2. So this server runs directly over eth0 and provides no redundancy on it's external connections.
+
+*Status*
+This configuration was a success up until heartbeat was tested. I've been unable to fully understand where the issue lies, but primarily heartbeat was very unstable. At times bringing up only 2 of the 3 configured devices for testing or simply failing to launch on startup. It would also at times put drbd in a halted state, where essentially drbd wasn't able to keep drives in sync (or even find their full configuration).
+
+All of the heartbeat issues caused full testing to be incomplete. Due to time constraints and the proverbial "hitting a brick wall as to why" I've moved on to the other configuration for now in order to make some progress and see if more research will help solve the heartbeat issues.
+
+*Notes*
+* drbd initialization can take a very long time as it defaults to 25kbps. This command will temporarily increase the bandwidth needed for syncing. This should not be used in production as it uses all bandwidth between both SAN's:
+{code}
+drbdsetup /dev/drbd<devicenumber> syncer -r 110M
+{code}
+To return to the default speeds run:
+{code}
+drbdsetup adjust <resource>
+{code}
+* iscsi should not use the init system to start, instead iscsitarget is started by heartbeat.
+
+More to come...
+
+h3. config2
+
+Our second configuration uses iscsi to export lvm logical volumes to each blade (one from each SAN). We then use software RAID1 on each blade for redundancy.
+
+*Design*
+* eth0 and eth1 bonded for redundancy (external)
+* LVM
+** 16x 814G logical volumes, 1 for each blade.
+* iscsi configuration exports 1 target for each logical volume, providing 1 LUN for each target
+* Each blade server mounts it's respective logical volume (numbered from 1 to 16) and uses mdadm to place each device into a RAID1 configuration.
+
+*Status*
+Initialization takes quite a bit of time. I've tried to increase the speeds of the sync but haven't been able to get it over 20Mbps. The first test blade (blade16) just finished initialization as I am writing this. Beginning Wednesday (23rd) I'll begin running disk benchmarks and testing failover with the RAID setup.  I hope to get two solid days in of testing.
+
+*Notes*
+* In order to increase the speed of the initialization run the following:
+{code}
+sysctl -w dev.raid.speed_limit_min=10000
+sysctl -w dev.raid.speed_limit_max=100000
+{code}
+* You can watch the status of the RAID by the following:
+{code}
+cat /proc/mdstat
+{code}
+* Using discovery to find iscsi targets will show all Targets configured. We only need one for each blade from each san. In order to focus the blade server on the ones it needs remove the targets not needed from /var/lib/iscsi/nodes.
+* If during configuration some auth information is cached or there are other target information that is no longer needed you can reset this using the following:
+{code}
+iscsiadm -m node -T <target> -o delete
+{code}
+
+More to come...

@@ -1,0 +1,36 @@
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet manual
+
+auto eth1
+iface eth1 inet manual
+
+# The primary network interface
+auto bond0
+iface bond0 inet static
+	address 199.34.121.26
+	netmask 255.255.255.224
+	broadcast 199.34.121.31
+	gateway 199.34.121.30
+	network 199.34.121.29
+	slaves eth0 eth1
+
+# Member of bond1
+auto eth2
+iface eth2 inet manual
+
+# Member of bond1
+auto eth3
+iface eth3 inet manual
+
+# Network between two SAN devices
+auto bond1
+iface bond1 inet static
+	address 10.10.1.11
+	netmask 255.255.255.0
+	broadcast 10.10.1.255
+	network 10.10.1.0
+	slaves eth2 eth3

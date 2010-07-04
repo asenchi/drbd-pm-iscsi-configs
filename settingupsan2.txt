@@ -1,0 +1,162 @@
+# SAN1:
+# IP: 199.34.121.27
+# PASS: eypod1
+
+# INTERFACES
+# bond0: 199.34.121.27 (eth0, eth1) - network
+# bond1: 10.10.1.12 (eth2, eth3) - crossover
+
+# COMMANDS
+apt-get -y install ifenslave
+
+# Setup bonding in modprobe
+cat >> /etc/modprobe.d/aliases.conf << __EOF__
+alias bond0 bonding
+options bond0 mode=0 miimon=100 downdelay=200 updelay=200 max_bonds=2
+alias bond1 bonding
+options bond1 mode=0 miimon=100 downdelay=200 updelay=200 max_bonds=2
+__EOF__
+
+# Configure our 4 additional interfaces for bonding
+cat > /etc/network/interfaces << __EOF__
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+		address 199.34.121.27
+		netmask 255.255.255.224
+		broadcast 199.34.121.31
+		gateway 199.34.121.30
+		network 199.34.121.29
+
+auto eth1
+iface eth1 inet manual
+
+# The primary network interface
+auto bond0
+iface bond0 inet manual
+
+# Member of bond1
+auto eth2
+iface eth2 inet manual
+
+# Member of bond1
+auto eth3
+iface eth3 inet manual
+
+# Network between two SAN devices
+auto bond1
+iface bond1 inet static
+        address 10.10.1.12
+        netmask 255.255.255.0
+        broadcast 10.10.1.255
+        network 10.10.1.0
+		slaves eth2 eth3
+__EOF__
+
+cat >> /etc/hosts << __EOF__
+# NEED ENTRIES HERE FOR EXTERNAL
+10.10.1.11 san1.engineyard.private san1-private
+10.10.1.12 san2.engineyard.private san2-private
+__EOF__
+
+# Partitions
+# /dev/sda2 1G drbd meta data (unmounted)
+# /dev/sda3 1G device used for iscsi configuration files
+# /dev/sda4 13T device used as drbd device and iscsi target
+
+apt-get -y install drbd8-utils heartbeat
+
+# Since we are using heartbeat, we need to give it access to files
+chgrp haclient /sbin/drbdsetup
+chmod o-x /sbin/drbdsetup
+chmod u+s /sbin/drbdsetup
+chgrp haclient /sbin/drbdmeta
+chmod o-x /sbin/drbdmeta
+chmod u+s /sbin/drbdmeta
+
+cat >> /etc/drbd.conf << __EOF__
+resource iscsi.config {
+        protocol C;
+        device  /dev/drbd0;
+        disk    /dev/sda3;
+        meta-disk /dev/sda2[0];
+ 
+        handlers {
+        pri-on-incon-degr "echo 0 > /proc/sysrq-trigger ; halt -f";
+        pri-lost-after-sb "echo 0 > /proc/sysrq-trigger ; halt -f";
+        local-io-error "echo 0 > /proc/sysrq-trigger ; halt -f";
+        outdate-peer "/usr/lib/heartbeat/drbd-peer-outdater -t 5";      
+        }
+
+        startup {
+        degr-wfc-timeout 120;
+        }
+
+        disk {
+        on-io-error detach;
+        }
+
+        net {
+        cram-hmac-alg sha1;
+        shared-secret "password";
+        after-sb-0pri disconnect;
+        after-sb-1pri disconnect;
+        after-sb-2pri disconnect;
+        rr-conflict disconnect;
+        }
+
+        syncer {
+        rate 100M;
+        verify-alg sha1;
+        al-extents 257;
+        }
+
+		# Configuration inherits from primary resource
+        floating 10.10.1.11:7788;
+        floating 10.10.1.12:7788;
+}
+
+resource iscsi.target.0 {
+        protocol C;
+		device  /dev/drbd1;
+        disk    /dev/sda4;
+        meta-disk /dev/sda2[1];
+ 
+        handlers {
+        pri-on-incon-degr "echo 0 > /proc/sysrq-trigger ; halt -f";
+        pri-lost-after-sb "echo 0 > /proc/sysrq-trigger ; halt -f";
+        local-io-error "echo 0 > /proc/sysrq-trigger ; halt -f";
+        outdate-peer "/usr/lib/heartbeat/drbd-peer-outdater -t 5";      
+        }
+
+        startup {
+        degr-wfc-timeout 120;
+        }
+
+        disk {
+        on-io-error detach;
+        }
+
+        net {
+        cram-hmac-alg sha1;
+        shared-secret "HAHAEngineYardDevCLOUD10";
+        after-sb-0pri disconnect;
+        after-sb-1pri disconnect;
+        after-sb-2pri disconnect;
+        rr-conflict disconnect;
+        }
+
+        syncer {
+        rate 100M;
+        verify-alg sha1;
+        al-extents 257;
+        }
+
+		# Configuration inherits from primary resource
+        floating 10.10.1.11:7789;
+        floating 10.10.1.12:7789;
+}
+__EOF__

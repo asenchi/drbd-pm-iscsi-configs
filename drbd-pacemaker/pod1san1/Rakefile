@@ -1,0 +1,23 @@
+namespace :drbd do
+  
+  desc "pause-sync on specified resource"
+  task :pausesync do
+    sh "drbdadm pause-sync #{ENV['resource']}"
+  end
+  
+  desc "resume-sync on specified resource"
+  task :resumesync do
+    sh "drbdadm pause-sync #{ENV['resource']}"
+  end
+  
+  desc "increase syncer rate on specified resource"
+  task :incsync do
+    sh "drbdsetup #{ENV['device']} syncer -r #{ENV['speed']}"
+  end
+  
+  desc "reset syncer rate to default for specified resource"
+  task :defaultsync do
+    sh "drbdsetup adjust #{ENV['resource']}"
+  end
+  
+end
