@@ -68,6 +68,9 @@ drbdadm -- --overwrite-data-of-peer primary all
 # We need to remove drbd from startup as pacemaker will take care of that for us
 update-rc.d -f drbd remove
 
+# Set pod1san1 as primary
+drbdadm -- --overwrite-data-of-peer primary all
+
 # corosync-keygen # We already have a key generated
 cp conf/etc/corosync/authkey /etc/corosync/authkey
 cp conf/etc/corosync/corosync.conf /etc/corosync/corosync.conf
@@ -107,13 +110,33 @@ crm status
 # 
 #  pod1sanip	(ocf::heartbeat:IPaddr2):	Started pod1san1
 
-# Configure our drbd setup:
+# Configure our drbd setup (obviously a lot more here):
+crm configure primitive iscsi-config-fs ocf:heartbeat:Filesystem \
+	params device="/dev/drbd0" directory="/export/config" fstype="ext4"
 crm configure primitive pod1san-drbd-blade01 ocf:linbit:drbd \
-	params drbd_resources="blade.01" \
-	op monitor interval="20s" role="Slave" timeout="20s" \
-	op monitor interval="10s" role="Master" timeout="20s" \
-	op start interval="0" timeout="240s" \
-	op stop interval="0" timeout="100s"
-crm configure ms pod1san-drbd-ms pod1san-drbd-blade01 \
-	meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" \
-	notify="true"
+	params drbd_resource="blade.01" \
+	op monitor interval="7s" role="Slave" timeout="20s" \
+	op monitor interval="5s" role="Master" timeout="20s"
+crm configure primitive pod1san-drbd-blade02 ocf:linbit:drbd \
+	params drbd_resource="blade.02" \
+	op monitor interval="7s" role="Slave" timeout="20s" \
+	op monitor interval="5s" role="Master" timeout="20s"
+crm configure primitive pod1san-drbd-blade03 ocf:linbit:drbd \
+	params drbd_resource="blade.03" \
+	op monitor interval="7s" role="Slave" timeout="20s" \
+	op monitor interval="5s" role="Master" timeout="20s"
+crm configure primitive pod1san-drbd-iscsiconfig ocf:linbit:drbd \
+	params drbd_resource="config.r0" \
+	op monitor interval="7s" role="Slave" timeout="20s" \
+	op monitor interval="5s" role="Master" timeout="20s"
+crm configure ms pod1san-drbd-ms pod1san-drbd-iscsiconfig \
+	meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
+crm configure ms pod1san-drbd-ms1 pod1san-drbd-blade01 \
+	meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true" target-role="Started"
+crm configure ms pod1san-drbd-ms2 pod1san-drbd-blade02 \
+	meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
+crm configure ms pod1san-drbd-ms3 pod1san-drbd-blade03 \
+	meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
+colocation fs_on_drbd inf: iscsi-config-fs pod1san-drbd-ms:Master
+order fs_after_drbd inf: pod1san-drbd-ms:promote iscsi-config-fs:start
+
