@@ -48,6 +48,8 @@ chkconfig --level 2345 iscsid on
 iscsiadm -m discovery -t sendtargets -p pod1san1.engineyard.com
 iscsiadm -m discovery -t sendtargets -p pod1san2.engineyard.com
 
+iscsiadm -m node -T iqn.2010-07.com.engineyard.devcloud:storage01 -p 199.34.121.28:3260 -l
+
 # Remove all targets except those ones destined for this blade
 for i in 0{1..9} {10..15}; do rm -rf /var/lib/iscsi/nodes/*.storage$i; done
 
