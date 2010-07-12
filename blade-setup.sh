@@ -38,7 +38,7 @@ node.session.iscsi.FastAbort = Yes
 __EOF__
 
 cat > /etc/iscsi/initiatorname.iscsi << __EOF__
-InitiatorName=iqn.2010-07.com.engineyard:pod1blade$NUM
+InitiatorName=iqn.2010-07.com.engineyard.devcloud:pod1blade$NUM
 __EOF__
 
 chkconfig --level 2345 iscsi on
