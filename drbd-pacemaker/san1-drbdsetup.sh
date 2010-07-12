@@ -17,10 +17,10 @@ mv /etc/ietd.conf{,.orig}
 
 # TODO: Needs a lot of work and full explanation of all resources
 cat > /export/config/ietd.conf << __EOF__
-Target iqn.2010-07.com.engineyard.storage01
+Target iqn.2010-07.com.engineyard:storage01
 	# Password is required to be 12 characters long
 	IncomingUser engineyard-devcloud "HAHAEYdev383"
-	OutgoingUser 
+	OutgoingUser engineyard-devcloud "HAHAEYdev383"
 	Lun 0 Path=/dev/drbd01,Type=fileio
 	Alias blade01
 	MaxConnections         1
