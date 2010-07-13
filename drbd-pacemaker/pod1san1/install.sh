@@ -36,11 +36,8 @@ pvcreate /dev/sda1
 # Create our volume group with 32M extents. This supports our 13T.
 vgcreate -s 32M blades /dev/sda1
 
-# Setup a 1G slice for our iscsi configuration
-lvcreate -L1G -niscsiconfig blades
-
 # And one for our drbd meta data
-lvcreate -L12G -ndrbdmeta blades
+lvcreate -L13G -ndrbdmeta blades
 
 # Now, create 16 790G logical volumes, one for each of our blades
 for i in 0{1..9} {10..16}
