@@ -5,7 +5,7 @@ sed -i '/HOSTNAME/d' /etc/sysconfig/network
 echo "HOSTNAME=pod1blade$NUM.engineyard.com" >> /etc/sysconfig/network
 
 yum -y groupinstall Base
-yum -y install iscsi-initiator-utils wget procmail bc perl parted sysstat
+yum -y install iscsi-initiator-utils parted sysstat
 
 cp conf/etc/iscsi/iscsid.conf /etc/iscsi/iscsid.conf
 
@@ -24,7 +24,7 @@ iscsiadm -m node -T iqn.2010-07.com.engineyard.devcloud:storage$NUM -p 199.34.12
 # Remove all targets except those ones destined for this blade
 for i in 0{1..9} {10..15}; do rm -rf /var/lib/iscsi/nodes/*.storage$i; done
 
-# Partition our new iscsi target
+# Partition our new iscsi target (device may be different)
 parted /dev/sdb mklabel gpt
 parted /dev/sdb mkpart primary 0 -0
 
