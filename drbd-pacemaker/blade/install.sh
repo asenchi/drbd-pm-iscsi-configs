@@ -4,9 +4,6 @@ hostname pod1blade$NUM.engineyard.com
 sed -i '/HOSTNAME/d' /etc/sysconfig/network
 echo "HOSTNAME=pod1blade$NUM.engineyard.com" >> /etc/sysconfig/network
 
-yum -y groupinstall Base
-yum -y install iscsi-initiator-utils parted sysstat
-
 cp conf/etc/iscsi/iscsid.conf /etc/iscsi/iscsid.conf
 
 cat > /etc/iscsi/initiatorname.iscsi << __EOF__
